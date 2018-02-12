@@ -1,0 +1,334 @@
+/**********************************************************************************************
+                                              VARIABLES
+ **********************************************************************************************/
+
+const byte pinLedCalibra = 12;      //Para calibración 
+
+/*Digitales*/
+
+// Leds-Luces
+const byte pinLedLuz = 2;   // pinLed ap.1
+const byte pinLedSlider = 3; // pinLed ap.3
+
+// Aire (ventilador)
+byte pinAire = 4;
+
+
+/*Analogicas*/
+
+
+const byte pinLDR = A0;
+const byte pinNTC = A1;    
+
+// Variables booleanas
+
+boolean ledLuzAuto = false; // pinLed modo funcionamiento false: Manual / true: automatico -> inicalmente manual
+boolean aireAuto = false;   // Pin para el ventilador - false: manual - true: automatico
+
+
+// Variables principales de programa
+
+char lecturaComando;    // Variable donde guardamos la lectura del comando
+int lecturaValor;      // Variable donda guardamos el valor de la lectura
+
+
+// Variable para imprimir valores / DEBUG
+
+boolean debug = true;  // Activamos o desactivos el debug
+boolean debugLedLuz = true; //Activamos o desactivamos debug de los LEDS
+boolean debugModoLedLuz = true;       // Activamos o desactivos el debug del funcionamiento de los LEDs: Manual/Automatico.
+boolean debugValoresLDR = true;       // Activamos o desactivos el debug de los Valores la LDR. 
+
+
+/*Variables para la configuracion del LDR*/
+
+int maxLDR;
+int minLDR;
+
+/**********************************************************************************************                     
+                                            PROGRAMA PRINCIPAL
+**********************************************************************************************/
+
+// Funcion de configuracion
+
+void setup()
+{
+  Serial.begin(9600);    // Activamos el puerto Serial a 9600 baudios
+  configuraPines();      // Funcin quie configura los pines como Entrada o salida
+
+}
+
+// Funcion principal
+
+void loop()
+{
+  lecturaSerial();      // Lectura de comando del Serial y Actuaciones
+  fAutomaticas();       // Realiza las acciones automaticas
+  alarma();             // Gestiona la Alarma
+  escenas();
+
+}
+
+
+/*******************************************************************************************************/
+
+/**************************************************************************************************
+                                                FUNCIONES
+ **************************************************************************************************/
+
+// CONFIGURACION
+
+// Funcion de configuracion de pines
+
+void configuraPines()
+{
+  /* Para las entradas*/
+
+  pinMode(pinLedLuz, OUTPUT);
+
+  /*Para las salidas*/  
+  pinMode(pinLedLuz, OUTPUT);     // Configuramos pin Luz como salida
+  digitalWrite(pinLedLuz, LOW);   // Iniciamos el Led Luz como apagado
+
+  pinMode(pinLedSlider, OUTPUT);     // Configuramos pin Luz Slider como salida
+  digitalWrite(pinLedSlider, LOW);   // Iniciamos el Led Luz Slider como apagado
+
+  pinMode(pinLedCalibra, OUTPUT);
+  digitalWrite (pinLedCalibra, LOW);
+
+}
+
+/*Funcion calibrado LDR*/
+
+void calibradoLDR()
+{
+if (
+  
+}
+
+
+
+// FUNCIONES PRINCIPALES
+
+// Lectura de comando
+
+boolean lecturaSerial()
+{
+  if (Serial.available() > 0)
+  {
+    lecturaComando = Serial.read();
+    if (debug) Serial.print("Comando: ");
+    if (debug) Serial.println(lecturaComando);
+    
+
+    actuaciones();
+  }
+}
+
+
+// Funcion para la Gestion de las funciones automaticas
+
+void fAutomaticas()
+{
+  if (ledLuzAuto) controlLedLuz();     // Si Led Luz automatico: Realizo controlautomatico de Led Luz  return true;
+}
+
+
+// Funcion de gestion de Alarma
+
+void alarma()
+{
+
+}
+
+
+// Funcion de escenas 
+
+void escenas()
+{
+
+
+ 
+  
+  }
+
+/*FUNCIONES SECUNDARIAS*/
+
+
+// Gestiona las actuaciones en funcion de la lectura
+
+void actuaciones()
+{
+  /*Luces Led*/
+  if ((lecturaComando == 'l') && (!ledLuzAuto)) apagaLedLuz();         // Si 'l' y manual: Enciendo Led Luz
+  else if ((lecturaComando == 'L') && (!ledLuzAuto)) enciendeLedLuz(); // Si 'L' y manual: Apago Led Luz
+  else if (lecturaComando == 'a') modoLedLuz(false);                  // Si 'a' Led Luz Manual
+  else if (lecturaComando == 'A') modoLedLuz(true);                   // Si 'A' Led Luz Automatico
+
+   /*Aire*/
+  if ((lecturaComando == 'c') && (!aireAuto)) aireOFF();         // Si 'l' y manual: Enciendo Led Luz
+  else if ((lecturaComando == 'C') && (!aireAuto)) aireON(); // Si 'L' y manual: Apago Led Luz
+  else if (lecturaComando == 's') modoAireAuto(false);                  // Si 'a' Led Luz Manual
+  else if (lecturaComando == 'S') modoAireAuto(true);                   // Si 'A' Led Luz Automatico
+
+
+  /* Encendido por Slider*/ 
+  else if (lecturaComando == 'S') accionLedSlider(true);              // Si 'S' Leemos el valor del Slider
+  else if (lecturaComando == 's') accionLedSlider(false);             // Si 's' apagamos Led Slider
+
+
+  
+
+  
+  // Añadir nuevos comandos y llamadas a nuevas funciones
+  
+  else if (debug) Serial.println("Comando incorrecto");               // Si no ningun comando no hace nada
+
+  vaciaSerial();
+
+}
+
+// Vaciado del Serial
+
+void  vaciaSerial()
+{
+  while(Serial.available()>0) Serial.read();
+  if (debug) Serial.println("Serial vaciado ... esperando nuevo comando");
+}
+
+
+// FUNCIONES de ACCIONES
+
+// Funciones que apaga/enciende Led Luz
+
+void apagaLedLuz()  //APAGA Led Luz
+{
+  if (debug) Serial.println("Led Luz -> OFF");
+  digitalWrite(pinLedLuz, LOW);
+}
+
+void enciendeLedLuz()  //ENCIENDE Led Luz
+{
+  if (debug) Serial.println("Led Luz -> ON");
+  digitalWrite(pinLedLuz, HIGH);
+}
+
+// Funcion que asigna el modo de funcionamiento del Led Luz
+
+void modoLedLuz(boolean modoLuz)
+{
+  if (modoLuz)
+  {
+    if (debug) Serial.println("Led Luz automatico -> ON");
+    ledLuzAuto = true;                   // Si 'A' Led Luz Automatico
+  }
+  else
+  {
+    if (debug) Serial.println("Led Luz automatico -> OFF ");
+    ledLuzAuto = false;                  // Si 'a' Led Luz Manual
+  }
+}
+
+// Funciones que regula el A/A
+
+
+void aireON()
+{
+  
+  
+}
+
+void aireOFF ()
+{
+  
+  
+}
+
+void modoAireAuto(boolean modoAire)
+{
+  
+}
+
+
+// Funciones que regula Led Slider
+
+void accionLedSlider(boolean actuar)
+{
+  if (actuar)                                                              // Si recibimos orden de encender
+  {
+    if (lecturaValorLedSlider()) analogWrite(pinLedSlider, lecturaValor);  // Si la letura del valor es correcta regula el led
+  }
+  else 
+  {
+    if (debug) Serial.println("Led Slider -> OFF ");
+    digitalWrite(pinLedSlider, LOW);                                    // Si recibimos orden de apagar-> Apagamos
+  }
+
+}
+
+// Funcion que lee el valor para el Led Slider
+
+boolean lecturaValorLedSlider()
+{
+  delay(10);                                              // Para que realice bien la lectura del Serial.parseInt()
+
+  if (Serial.available() > 0)                             // Si hay datos
+  {
+    lecturaValor = Serial.parseInt();                     // Leo Entero del Serial
+
+    if (debug) Serial.print("Valor leido led Slider: ");           // Imprimo dato
+    if (debug) Serial.println(lecturaValor);            // Imprimo dato
+
+    if ((lecturaValor < 0) || (lecturaValor > 255))       // Si valor erroneo debe estar entre (1-255)
+    {
+      if (debug) Serial.print("Valor incorrecto (1-255): ");    // Imprimo dato
+      if (debug) Serial.println(lecturaValor);            // Imprimo dato
+
+      return false;                                       // Devuelvo false - error en comando
+    }
+    else return true;                                     // Si valor correcto - Devuelvo true - Comando OK completo
+  }
+  else                                                    // Si no hay datos
+  {
+    if (debug) Serial.println("Comando incompleto - S + numero (1-255)");      // Imprimo dato
+
+    return false;                                         // Devuelvo false - comando incompleto
+  }
+
+}
+
+/************************************************************************************************************************
+// FUNCIONES AUTOMATICAS
+*************************************************************************************************************************/
+
+
+// Controlde LedLuz
+
+void controlLedLuz()
+{
+ int lecturaValorLDR = analogRead(pinLDR);                       // Leo el valor de la LDR.
+  int valorLed = map(lecturaValorLDR, minLDR, maxLDR, 0, 255);    // Lo mapeo a un valor entre 0 y 255.
+  analogWrite(pinLedLuz, valorLed);                               // Enciendo el pinLedLuz con el valor leido.
+  if (debugValoresLDR) Serial.print("Valor LDR: ");               // Imprimo dato.
+  if (debugValoresLDR) Serial.print(lecturaValorLDR);
+  if (debugValoresLDR) Serial.print("\t Valor Led: ");            // Imprimo dato.
+  if (debugValoresLDR) Serial.println(valorLed);
+  delay(500);
+
+}
+
+
+//Control del A/A
+
+
+
+
+
+// FUNCIONES DE ALARMA
+
+
+
+
+
+
+
