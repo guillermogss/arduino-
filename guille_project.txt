@@ -13,7 +13,7 @@ SoftwareSerial BTSerial(RxD, TxD);
 
 //Libreria para el sensor DHT11
 #include "DHT.h"
-#define DHTPIN 26
+#define DHTPIN 22
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -37,7 +37,7 @@ const byte pinLedSlider = 3;                    // pinLed ap.3
 
 
 // Ventilador (ventilador)
-byte pinVent = 22;                               //pin para ventilador (ap.2)
+byte pinVent = 4;                               //pin para ventilador (ap.2)
 //Para la funcion automatica, lo realizaremos con el sensor DHT11
 
 
@@ -60,13 +60,13 @@ int lecturaValor;                               // Variable donda guardamos el v
 
 /********************************* Variable para imprimir valores - Debug *************************************************************/
 
-boolean debug = false;                           // Activamos o desactivos el debug
-boolean debugLedLuz = false;                     //Activamos o desactivamos debug de los LEDS
-boolean debugModoLedLuz = false;                 // Activamos o desactivamos el debug del led: Manual/Automatico.
-boolean debugValLDR = false;                     // Activamos o desactivamos el debug de los Valores la LDR.
-boolean debugCalibraLDR = false;                 // Activamos o desactivamos el debug de la calibracion LDR.
-boolean debugVent = false;                       // Activamos o desactivamos el debug del Ventilador: Manual/Automatico
-boolean debugTemp = false;                       // Activamos o desactivamos el debug de la temperatura
+boolean debug = true;                           // Activamos o desactivos el debug
+boolean debugLedLuz = true;                     //Activamos o desactivamos debug de los LEDS
+boolean debugModoLedLuz = true;                 // Activamos o desactivamos el debug del led: Manual/Automatico.
+boolean debugValLDR = true;                     // Activamos o desactivamos el debug de los Valores la LDR.
+boolean debugCalibraLDR = true;                 // Activamos o desactivamos el debug de la calibracion LDR.
+boolean debugVent = true;                       // Activamos o desactivamos el debug del Ventilador: Manual/Automatico
+boolean debugTemp = true;                       // Activamos o desactivamos el debug de la temperatura
 
 
 /********************************** Variables para la configuracion del LDR*************************************************************/
@@ -377,9 +377,9 @@ void controlLedLuz()
   int lecturaValorLDR = analogRead(pinLDR);                       // Leo el valor de la LDR.
   int valorLed = map(lecturaValorLDR, minLDR, maxLDR, 255, 0);    // Lo mapeo a un valor entre 0 y 255.
   analogWrite(pinLedLuz, valorLed);                               // Enciendo el pinLedLuz con el valor leido.
-  if (debugValLDR) Serial.print("Valor LDR: ");               // Imprimo dato.
+  if (debugValLDR) Serial.print("Valor LDR: ");                   // Imprimo dato.
   if (debugValLDR) Serial.print(lecturaValorLDR);
-  if (debugValLDR) Serial.print("\t Valor Led: ");            // Imprimo dato.
+  if (debugValLDR) Serial.print("\t Valor Led: ");                // Imprimo dato.
   if (debugValLDR) Serial.println(valorLed);
   delay(500);
 
@@ -392,31 +392,45 @@ void controlVent()
 
 {
 
-  float temp = dht.readTemperature();
-  float tempBase = dht.readTemperature(true);
+  float tempC = dht.readTemperature();                        //Variable para leer la temperatura en ºC
+  float tempFar = dht.readTemperature();                      //Variable para leer la temperatura en ºF (Solo para puerto Serial)
 
-  if (temp > tempBase)
+  if (isnan(tempC) || isnan(tempFar)) {                       //Funcion para notificar fallo en el sensor
+    Serial.println("No se detecta el sensor!");
+    return;
+  }
+
+  float hi = dht.computeHeatIndex(tempFar, tempC);            
+  lcd.clear();
+  Serial.print("Temperatura: ");                              // imprimir la palabra "Temperatura" puerto serial
+  lcd.print("Temperatura (*C): ");                            // imprimir la palabra "Temperatura" en pantalla LCD
+  lcd.setCursor(3, 1);                                        // Posicion en la pantalla LCD
+  Serial.print(tempC);                                        // Imprimir temperatura ºC en Serial
+  lcd.print(tempC);                                           // Imprimir temperatura ºC en LCD
+  Serial.print(" *C ");                                       // Indicar que son ºC en la pantalla LCDb
+  lcd.setCursor(6, 2);
+  Serial.print(tempFar);//Imprimir temperatura ºC en Serial
+  Serial.print(" *F\t");
+  Serial.print("Heat index: ");
+  Serial.print(hi);
+  Serial.println(" *F");
+  delay(1000);
+  
+  if (tempC >= 20)                                            // Si la temperatura es superior a los 20ºC
   {
-    digitalWrite (pinVent, HIGH);
+digitalWrite (pinVent, HIGH);                                 // encender el ventilador
   }
   else
   {
-    digitalWrite(pinVent, LOW);
+digitalWrite(pinVent, LOW);                                   // Apagar el ventilador
   }
-  if (debugVent) Serial.print(temp);
-  lcd.clear();
-  lcd.print("Temperatura");
-  lcd.setCursor(4, 1);
-  if (debugVent) Serial.println ("ºC ");
-  lcd.print("ºC ");
-  lcd.setCursor(6, 2);
-  delay (100);
+
 }
 
 
 
-
 // FUNCIONES DE ALARMA
+
 
 
 
