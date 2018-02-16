@@ -71,14 +71,14 @@ int lecturaValor;                               // Variable donda guardamos el v
 
 /********************************* Variable para imprimir valores - Debug *************************************************************/
 
-boolean debug = true;                           // Activamos o desactivos el debug
-boolean debugLedLuz = true;                     // Activamos o desactivamos debug de los LEDS
-boolean debugModoLedLuz = true;                 // Activamos o desactivamos el debug del led: Manual/Automatico.
-boolean debugValLDR = true;                     // Activamos o desactivamos el debug de los Valores la LDR.
-boolean debugCalibraLDR = true;                 // Activamos o desactivamos el debug de la calibracion LDR.
-boolean debugVent = true;                       // Activamos o desactivamos el debug del Ventilador: Manual/Automatico
-boolean debugTemp = true;                       // Activamos o desactivamos el debug de la temperatura
-boolean debugRelay = true;                      // Activamos o desactivamos el debug del Rele
+boolean debug = false;                           // Activamos o desactivos el debug
+boolean debugLedLuz = false;                     // Activamos o desactivamos debug de los LEDS
+boolean debugModoLedLuz = false;                 // Activamos o desactivamos el debug del led: Manual/Automatico.
+boolean debugValLDR = false;                     // Activamos o desactivamos el debug de los Valores la LDR.
+boolean debugCalibraLDR = false;                 // Activamos o desactivamos el debug de la calibracion LDR.
+boolean debugVent = false;                       // Activamos o desactivamos el debug del Ventilador: Manual/Automatico
+boolean debugTemp = false;                       // Activamos o desactivamos el debug de la temperatura
+boolean debugRelay = false;                      // Activamos o desactivamos el debug del Rele
 
 
 /********************************** Variables para la configuracion del LDR*************************************************************/
