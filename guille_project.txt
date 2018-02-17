@@ -469,20 +469,22 @@ void modoAlarmaAuto (boolean modoAlarma)
 
     }
     Serial.println("Sistema Armado ");
+    sirenaAuto = true;                   // Si 'S' Armado alarma
     lcd.print("Alarma activada ");
     lcd.setCursor(3, 1);
-    sirenaAuto = true;                   // Si 'S' Armado alarma
+    
   }
   else
   {
     if (debugAlarma) Serial.println("Sistema Desarmado ");
-    lcd.clear();
-    lcd.print("Alarma desactivada ");
-    delay(3000);
-    lcd.clear();
-    lcd.setCursor(3, 1);
     sirenaAuto = false;                  // Si 's' Desarmado Alarma
-    lcd.clear();
+    lcd.clear();                         // limpia la pantalla por si hay algun mensaje previo
+    lcd.print("Alarma desactivada ");    // refleja en la pantalla el mensaje de desarmado exitoso
+    lcd.setCursor(3, 1);
+    delay(3000);                         // mantiene el mensaje durante un tiempo
+    lcd.clear();                         // Limpia la pantalla
+    digitalWrite(pinAviso, LOW);         // Desactivada la alarma, se apaga el pin
+    digitalWrite(pinSirena, LOW);        // Desactivada la alarma, se apaga la sirena
   }
 
 }
@@ -501,7 +503,7 @@ void controlLedLuz()
   int valorLed = map(lecturaValorLDR, minLDR, maxLDR, 255, 0);    // Lo mapeo a un valor entre 0 y 255.
   analogWrite(pinLedLuz, valorLed);                               // Enciendo el pinLedLuz con el valor leido.
   if (debugValLDR) Serial.print("Valor LDR: ");                   // Imprimo dato.
-  if (debugValLDR) Serial.print(lecturaValorLDR);
+  if (debugValLDR) Serial.print(lecturaValorLDR);                 // Lee el valor del LDR
   if (debugValLDR) Serial.print("\t Valor Led: ");                // Imprimo dato.
   if (debugValLDR) Serial.println(valorLed);
   delay(500);
@@ -562,7 +564,7 @@ void controlRelay ()
     digitalWrite(pinRelay, HIGH);                                 //si es verdadero pondra en estado alto el pin 7
     delay(100);                                                   //espera 100ms antes de tomar el siguiente dato
 
-    if (irrecv.decode(&results))
+    if (irrecv.decode(&results))                                  // este if es para ver en el puerto Serial si hay deteccion del mando
     {
       Serial.println(results.value, HEX);
       irrecv.resume();
@@ -576,25 +578,25 @@ void controlRelay ()
 
 void controlAlarma() {
 
-  Serial.print ("distancia en cm:");
+  Serial.print ("distancia en cm:");                      // Marcamos la unidad de medida del sensor
   Serial.println(ultra.distanceRead());
 
-  if (ultra.distanceRead() < 10)
+  if (ultra.distanceRead() < 10)                          // si alguien se aproxima a la distancia configurada:
   {
-    digitalWrite(pinAviso, HIGH);
-    digitalWrite(pinSirena, HIGH);
+    digitalWrite(pinAviso, HIGH);                         // Enciende Led Sirena
+    digitalWrite(pinSirena, HIGH);                        // Enciende zumbador sirena
     lcd.clear();
-    lcd.print("Alarma entrada");
+    lcd.print("Alarma entrada");                          // Indica en la pantalla El sensor que ha saltado
     lcd.setCursor(3, 1);
     Serial.println("------------------------");
-    Serial.println("** MOVIMIENTO DETECTADO **");
+    Serial.println("** MOVIMIENTO DETECTADO **");         // Aviso del salto en el puerto serial
     Serial.println("------------------------");
     Serial.println("");
-    delay(5000);
+    delay(5000);                                          // Este dalay mantiene en funcionamiento el salto de alarma, lo normal en estos dispositivos es que sea de 3 a 5 min..
   }
-    else
+  else                                                    // Despues de pasado ese tiempo
   {
-    digitalWrite(pinAviso, LOW);
-    digitalWrite(pinSirena, LOW);
-}
+    digitalWrite(pinAviso, LOW);                          // Apaga Led Sirena
+    digitalWrite(pinSirena, LOW);                         // Apaga Sirena, y Rearma.
+  }
 }
