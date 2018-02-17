@@ -366,25 +366,25 @@ void modoVentAuto(boolean modoVent)
 void relayON()
 {
   if (debugRelay) Serial.println (" Enchufe: Activado");
-  digitalWrite(pinRelay, HIGH);
+  digitalWrite(pinRelay, HIGH);                                                   // Si 'R' activacion rele manual
 }
 void relayOFF ()
 {
   if (debugRelay) Serial.println (" Enchufe: Desactivado");
-  digitalWrite (pinRelay, LOW);
+  digitalWrite (pinRelay, LOW);                                                   // Si 'r' desactivacion rele manual
 }
 void modoRelayAuto(boolean modoRelay)
 {
   if (modoRelay)
   {
     if (debugRelay) Serial.println("Enchufe: Activado ");
-    relayAuto = true;                                                      // Si 'R' Activacion enchufe
+    relayAuto = true;                                                             // Si 'E' activacion enchufe automatico por IR
   }
   else
   {
     if (debugRelay) Serial.println("Enchufe: Desactivado ");
-    relayAuto = false;                                                    // Si 'r' Desactivacion enchufe
-    relayOFF();                                                           // Al pasar al modo manual, vuelve a estado false
+    relayAuto = false;                                                            // Si 'e' desactivacion enchufe automatico por IR
+    relayOFF();                                                                   // Al pasar al modo manual, vuelve a estado false
   }
 }
 
