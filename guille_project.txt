@@ -268,8 +268,8 @@ void actuaciones()
 
 
   /* Encendido por Slider*/
-  else if (lecturaComando == 'S') accionLedSlider(true);                // Si 'D' Leemos el valor del Slider
-  else if (lecturaComando == 's') accionLedSlider(false);               // Si 'd' apagamos Led Slider
+  else if (lecturaComando == 'D') accionLedSlider(true);                // Si 'D' Leemos el valor del Slider
+  else if (lecturaComando == 'd') accionLedSlider(false);               // Si 'd' apagamos Led Slider
 
   /* Apertura de puerta*/
   else if ((lecturaComando == 'P') && (!puertaAuto)) puertaOpen();           // Si 'r' y manual: Activo enchufe
