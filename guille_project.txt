@@ -166,11 +166,11 @@ void configuraPines()
   pinMode(pinLedSlider, OUTPUT);                  // Configuramos pin Luz Slider como salida
   digitalWrite(pinLedSlider, LOW);                // Iniciamos el Led Luz Slider como apagado
 
-  servo.attach(10);                              // Definimos el pin del Servo
-  servo.write(10);  //ready
+  servo.attach(10);                               // Definimos el pin del Servo
+  servo.write(10);                                //Servo preparado
 
-  pinMode(pinAviso, OUTPUT);                    // Configuramos el pin del Led de aviso
-  pinMode(pinSirena, OUTPUT);                   // Configuramos el pin de laslida de la sirena
+  pinMode(pinAviso, OUTPUT);                      // Configuramos el pin del Led de aviso
+  pinMode(pinSirena, OUTPUT);                     // Configuramos el pin de laslida de la sirena
   digitalWrite(pinAviso, LOW);
   digitalWrite(pinSirena, LOW);
 
