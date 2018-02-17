@@ -47,7 +47,7 @@ const byte pinRelay = 23;                        // pin Rele ap.4
 const byte pinLedSlider = 3;                    // pinLed ap.3
 
 //Alarma
-int pinAviso = 36;                              // pin led de aviso alarma ap.8
+int pinAviso = 34;                              // pin led de aviso alarma ap.8
 int pinSirena = 35;                             // pin que activa ña sirena ap. 8
 int retardoAlarma = 10;                         // conteo para retardo de salida al activar la alarma
 
@@ -237,6 +237,7 @@ void fAutomaticas()
   if (ledLuzAuto) controlLedLuz();          // Si se inicia Led Luz automatico, control automatico de Led Luz true
   if (ventAuto)   controlVent();            // Si se inicia Ventilador automatico, control automatico true
   if (relayAuto)  controlRelay();           // Si se inicia el control automático del relay, infrared true
+  if (sirenaAuto) controlAlarma();          // Para iniciar el control automatico de la alarma
 }
 
 
@@ -279,7 +280,7 @@ void actuaciones()
   else if (lecturaComando == 's') modoAlarmaAuto(false);                  // Si 'S' -  Sistema Armado
   else if (lecturaComando == 'S') modoAlarmaAuto(true);                   // Si 's' - Sistema desarmado
 
-  
+
 
   // Añadir nuevos comandos y llamadas a nuevas funciones
 
@@ -460,12 +461,13 @@ void modoAlarmaAuto (boolean modoAlarma)
     if (debugAlarma)
     {
       Serial.println("Sistema arma: Retardo de salida");
-      for(int i = 0; i <= retardoAlarma; i++){
-      Serial.print(((i*10)/retardoAlarma));
-      Serial.println("Retardo terminado");
-       }
-      
+      for (int i = 0; i <= retardoAlarma; i++) {
+        Serial.print(((i * 10) / retardoAlarma));
+        Serial.println(" Tiempo retardo");
+        delay(1000);
       }
+
+    }
     Serial.println("Sistema Armado ");
     lcd.print("Alarma activada ");
     lcd.setCursor(3, 1);
@@ -590,4 +592,9 @@ void controlAlarma() {
     Serial.println("");
     delay(5000);
   }
+    else
+  {
+    digitalWrite(pinAviso, LOW);
+    digitalWrite(pinSirena, LOW);
+}
 }
