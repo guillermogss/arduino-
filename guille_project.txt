@@ -19,6 +19,10 @@
 //Libreria que controla el Servo
 #include <Servo.h>
 
+// Libreria que controla la funcion de la alarma
+#include <Ultrasonic.h>
+
+
 /**********************************************************************************************
                                               VARIABLES
  **********************************************************************************************/
@@ -42,6 +46,11 @@ const byte pinRelay = 23;                        // pin Rele ap.4
 //Slider
 const byte pinLedSlider = 3;                    // pinLed ap.3
 
+//Alarma
+
+int pinAviso = 34;                              // pinLed ap. 4
+int pinSirena = 35;                             // pin Sirena
+
 
 /*Analogicas*/
 
@@ -54,6 +63,7 @@ boolean ledLuzAuto = false;                     // pinLed modo funcionamiento fa
 boolean ventAuto = false;                       // Pin para el ventilador - false: manual - true: automatico -> inicalmente manual
 boolean relayAuto = false;                      // Pin para el enchufe - false: manual - true: automatico -> inicalmente manual
 boolean puertaAuto = false;                      // Pin para la puerta - false: cerrado
+boolean sirenaAuto = false;                       // Pin para la sirena -
 
 // Variables de las librerias
 
@@ -69,12 +79,11 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 Servo servo;
 
+Ultrasonic ultra (31, 30);     //Pines para sensor Ultrasonido
 /********************************* Variables principales de programa*******************************************************************/
 
 char lecturaComando;                            // Variable donde guardamos la lectura del comando
 int lecturaValor;                               // Variable donda guardamos el valor de la lectura
-
-
 
 /********************************* Variable para imprimir valores - Debug *************************************************************/
 
@@ -87,6 +96,7 @@ boolean debugVent = true;                       // Activamos o desactivamos el d
 boolean debugTemp = true;                       // Activamos o desactivamos el debug de la temperatura
 boolean debugRelay = true;                      // Activamos o desactivamos el debug del Rele
 boolean debugPuerta = true;                     // Activamos o desactivamos el debug del Servo
+boolean debugAlarma = true;                     // Activamos o desactivamos el debug de la alarma
 
 /********************************** Variables para la configuracion del LDR*************************************************************/
 
@@ -119,8 +129,6 @@ void loop()
 {
   lecturaSerial1();                              // Lectura de comando del Serial y Actuaciones
   fAutomaticas();                               // Realiza las acciones automaticas
-  alarma();                                     // Gestiona la Alarma
-
 
 }
 
@@ -160,7 +168,12 @@ void configuraPines()
 
   servo.attach(10);                              // Definimos el pin del Servo
   servo.write(10);  //ready
-  delay(950);
+
+  pinMode(pinAviso, OUTPUT);                    // Configuramos el pin del Led de aviso
+  pinMode(pinSirena, OUTPUT);                   // Configuramos el pin de laslida de la sirena
+  digitalWrite(pinAviso, LOW);
+  digitalWrite(pinSirena, LOW);
+
 }
 
 /*Funcion calibrado LDR*/
@@ -221,17 +234,8 @@ void fAutomaticas()
   if (ledLuzAuto) controlLedLuz();          // Si se inicia Led Luz automatico, control automatico de Led Luz true
   if (ventAuto)   controlVent();            // Si se inicia Ventilador automatico, control automatico true
   if (relayAuto)  controlRelay();           // Si se inicia el control automático del relay, infrared true
+  if (sirenaAuto) controlAlarma();          // Para iniciar el control automatico de la alarma
 }
-
-
-// Funcion de gestion de Alarma
-
-void alarma()
-{
-
-}
-
-
 
 
 /*FUNCIONES SECUNDARIAS*/
@@ -248,7 +252,7 @@ void actuaciones()
   else if (lecturaComando == 'A') modoLedLuz(true);                     // Si 'A' Led Luz Automatico
 
   /*Ventilador*/
-  else if ((lecturaComando == 'v') && (!ventAuto)) ventOFF();                // Si 'v' y manual: Enciendo Led Luz
+  else if ((lecturaComando == 'v') && (!ventAuto)) ventOFF();           // Si 'v' y manual: Enciendo Led Luz
   else if ((lecturaComando == 'V') && (!ventAuto)) ventON();            // Si 'V' y manual: Apago Led Luz
   else if (lecturaComando == 'b') modoVentAuto(false);                  // Si 'b' Led Luz Manual
   else if (lecturaComando == 'B') modoVentAuto(true);                   // Si 'B' Led Luz Automatico
@@ -262,16 +266,23 @@ void actuaciones()
 
 
   /* Encendido por Slider*/
-  else if (lecturaComando == 'S') accionLedSlider(true);                // Si 'S' Leemos el valor del Slider
-  else if (lecturaComando == 's') accionLedSlider(false);               // Si 's' apagamos Led Slider
+  else if (lecturaComando == 'D') accionLedSlider(true);                // Si 'S' Leemos el valor del Slider
+  else if (lecturaComando == 'd') accionLedSlider(false);               // Si 's' apagamos Led Slider
 
   /* Apertura de puerta*/
-  else if ((lecturaComando == 'P') && (!puertaAuto)) puertaOpen();          // Si 'P' Abro la puerta
-  else if ((lecturaComando == 'p') && (!puertaAuto)) puertaClose();         // Si 'p' Cierro la puerta
+  else if ((lecturaComando == 'P') && (!puertaAuto)) puertaOpen();                // Si 'r' y manual: Activo enchufe
+  else if ((lecturaComando == 'p') && (!puertaAuto)) puertaClose();         // Si 'R' y manual: Desctivo enchufe
+
+  /*Alarma*/
+  else if (lecturaComando == 's') modoAlarmaAuto(false);                  // Desarmado
+  else if (lecturaComando == 'S') modoAlarmaAuto(true);                   // Armado
+
+
+
 
   // Añadir nuevos comandos y llamadas a nuevas funciones
 
-  else if (debug) Serial.println("Comando incorrecto");                     // Si no ningun comando no hace nada
+  else if (debug) Serial.println("Comando incorrecto");                  // Si no ningun comando no hace nada
   vaciaSerial();
 
 }
@@ -366,13 +377,13 @@ void modoRelayAuto(boolean modoRelay)
   if (modoRelay)
   {
     if (debugRelay) Serial.println("Enchufe: Activado ");
-    relayAuto = true;                                                       // Si 'R' Activacion enchufe
+    relayAuto = true;                   // Si 'R' Activacion enchufe
   }
   else
   {
     if (debugRelay) Serial.println("Enchufe: Desactivado ");
-    relayAuto = false;                                                      // Si 'r' Desactivacion enchufe
-    relayOFF();                                                             // al pasar al modo manual, vuelve a estado false
+    relayAuto = false;                  // Si 'r' Desactivacion enchufe
+    relayOFF();                         // al pasar al modo manual, vuelve a estado false
   }
 }
 
@@ -428,7 +439,7 @@ void puertaOpen()
 {
   if (debugPuerta) Serial.println ("Puerta abierta ");
   {
-    servo.write(175);                                              // Abre la puerta a 175º
+    servo.write(175);  // Abre la puerta a 175º
   }
 }
 
@@ -436,9 +447,26 @@ void puertaClose()
 {
   if (debugPuerta) Serial.println ("Puerta cerrada ");
   {
-    servo.write(2);                                                 // Cierro la puerta
+    servo.write(2);  // Cierro la puerta
   }
 }
+
+void modoAlarmaAuto (boolean modoAlarma)
+{
+  if (modoAlarma)
+  {
+    if (debugAlarma) Serial.println("Sistema Armado ");
+    sirenaAuto = true;                   // Si 'S' Armado alarma
+  }
+  else
+  {
+    if (debugAlarma) Serial.println("Sistema Desarmado ");
+    sirenaAuto = false;                  // Si 's' Desarmado Alarma
+    lcd.clear();
+  }
+
+}
+
 
 /************************************************************************************************************************
                                                   FUNCIONES AUTOMATICAS
@@ -528,12 +556,33 @@ void controlRelay ()
 // FUNCIONES DE ALARMA
 
 
+void controlAlarma() {
+
+  Serial.print ("distancia en cm:");
+  Serial.println(ultra.distanceRead());
+
+  if (ultra.distanceRead() < 10)
+  {
+    digitalWrite(pinAviso, HIGH);
+    digitalWrite(pinSirena, HIGH);
+    lcd.print("Alarma entrada");
+    lcd.setCursor(3, 1); 
+    Serial.println("------------------------");
+    Serial.println("** MOVIMIENTO DETECTADO **");
+    Serial.println("------------------------");
+    Serial.println("");
+    delay(5000);
+  }
+
+  else
+  {
+    digitalWrite(pinAviso, LOW);
+    digitalWrite(pinSirena, LOW);
+  }
 
 
 
-
-
-
+}
 
 
 
