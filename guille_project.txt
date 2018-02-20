@@ -59,7 +59,7 @@ const byte pinLDR = A0;                         // Pin analogico para los vaores
 
 boolean ledLuzAuto = false;                     // PinLed modo funcionamiento false: Manual - true: automatico -> inicalmente manual
 boolean ventAuto = false;                       // Pin para el ventilador - false: manual - true: automatico -> inicalmente manual
-boolean relayAuto = false;                      // Pin para el enchufe - false: manual - true: automatico -> inicalmente manual
+boolean relayAuto = false;                      // Pin para el enchufe - false: manual - true: automatico -> inicalmente manual y posicion cerrada
 boolean puertaAuto = false;                     // Pin para la puerta - false: cerrado
 boolean sirenaAuto = false;                     // Pin para la sirena -
 
@@ -82,27 +82,32 @@ Ultrasonic ultra (31, 30);                      // Pines para sensor de ultrason
 /********************************* Variables principales de programa*******************************************************************/
 
 char lecturaComando;                            // Variable donde guardamos la lectura del comando
-int lecturaValor;                               // Variable donda guardamos el valor de la lectura
+int lecturaValor;                               // Variable donde guardamos el valor de la lectura
+int lecturaAngulo;                              // Variable en la que leemos a que angulo esta la puerta abierta
+float tempC;                                    // Variable para leer la temperatura en ºC
+float tempFar;                                  // Variable para leer la temperatura en ºF (Solo para puerto Serial)
 
 
 
 /********************************* Variable para imprimir valores - Debug *************************************************************/
 
-boolean debug = false;                           // Activamos o desactivos el debug
-boolean debugLedLuz = false;                     // Activamos o desactivamos debug de los LEDS
-boolean debugModoLedLuz = false;                 // Activamos o desactivamos el debug del led: Manual/Automatico.
-boolean debugValLDR = false;                     // Activamos o desactivamos el debug de los Valores la LDR.
-boolean debugCalibraLDR = false;                 // Activamos o desactivamos el debug de la calibracion LDR.
-boolean debugVent = false;                       // Activamos o desactivamos el debug del Ventilador: Manual/Automatico
-boolean debugTemp = false;                       // Activamos o desactivamos el debug de la temperatura
-boolean debugRelay = false;                      // Activamos o desactivamos el debug del Rele
-boolean debugPuerta = false;                     // Activamos o desactivamos el debug del Servo
-boolean debugAlarma = false;                     // Activamos o desactivamos el debug de la alarma
+boolean debug = true;                           // Activamos o desactivos el debug
+boolean debugLedLuz = true;                     // Activamos o desactivamos debug de los LEDS
+boolean debugModoLedLuz = true;                 // Activamos o desactivamos el debug del led: Manual/Automatico.
+boolean debugValLDR = true;                     // Activamos o desactivamos el debug de los Valores la LDR.
+boolean debugCalibraLDR = true;                 // Activamos o desactivamos el debug de la calibracion LDR.
+boolean debugVent = true;                       // Activamos o desactivamos el debug del Ventilador: Manual/Automatico
+boolean debugTemp = false;                      // Activamos o desactivamos el debug de la temperatura
+boolean debugRelay = true;                      // Activamos o desactivamos el debug del Rele
+boolean debugPuerta = true;                     // Activamos o desactivamos el debug del Servo
+boolean debugRangoPuerta = true;                // Activamos o desactivamos el debug del control de la apertura de puerta
+boolean debugAlarma = true;                     // Activamos o desactivamos el debug de la alarma
 
 /********************************** Variables para la configuracion del LDR*************************************************************/
 
 int maxLDR = 0;
 int minLDR = 1024;
+int temperaturaInicio = 15;
 
 /****************************************************************************************************************************************
                                                        PROGRAMA PRINCIPAL
@@ -148,7 +153,7 @@ void configuraPines()
   /* Para las entradas*/
 
   pinMode(pinLedLuz, INPUT);                        // Fijamos pin de entrada para el LDR
-  pinMode (pinVent, INPUT);                         // Fijamos pin de entrada para el LDR
+  pinMode (pinVent, INPUT);                         // Fijamos pin de entrada para el Ventilador
 
   /*Para las salidas*/
 
@@ -258,6 +263,7 @@ void actuaciones()
   else if ((lecturaComando == 'V') && (!ventAuto)) ventON();                // Si 'V' y manual: Apago Led Luz
   else if (lecturaComando == 'b') modoVentAuto(false);                      // Si 'b' Led Luz Manual
   else if (lecturaComando == 'B') modoVentAuto(true);                       // Si 'B' Led Luz Automatico
+  else if (lecturaComando == 'T') modoTermostato();                         // Si 'T' Led Luz Automatico
 
 
   /*Enchufes - Rele*/
@@ -274,6 +280,8 @@ void actuaciones()
   /* Apertura de puerta*/
   else if ((lecturaComando == 'P') && (!puertaAuto)) puertaOpen();          // Si 'r' y manual: Activo enchufe
   else if ((lecturaComando == 'p') && (!puertaAuto)) puertaClose();         // Si 'R' y manual: Desctivo enchufe
+  else if (lecturaComando == 'G') accionServoSlider(true);                    // Si 'G' Leemos el angulo de apertura de la puerta
+  else if (lecturaComando == 'g') accionServoSlider(false);                   // Si 'g' apagamos se desactiva la regulacion de la apertura de la puerta
 
   /*Alarma*/
   else if (lecturaComando == 's') modoAlarmaAuto(false);                    // Si 'S' -  Sistema Armado
@@ -361,6 +369,7 @@ void modoVentAuto(boolean modoVent)
   }
 }
 
+
 //Funcion que regula el enchufe - rele -
 
 void relayON()
@@ -440,17 +449,69 @@ void puertaOpen()
 {
   if (debugPuerta) Serial.println ("Puerta abierta ");
   {
-    servo.write(175);                                                 // Abre la puerta a 175º
+    servo.write(175);                                                           // Abre la puerta a 175º
+  }
+}
+void puertaClose()
+{
+
+  if (debugPuerta) Serial.println ("Puerta cerrada ");
+  {
+    servo.write(2);                                                             // Cierro la puerta
   }
 }
 
-void puertaClose()
+
+// Funcion de regulación de la puerta
+
+void accionServoSlider(boolean actuar)
+
 {
-  if (debugPuerta) Serial.println ("Puerta cerrada ");
+  if (actuar)                                                                  // SI se ejecuta el comando
   {
-    servo.write(2);                                                   // Cierro la puerta
+    if (lecturaValorAngulo())servo.write(lecturaAngulo);                       // si la lectura esta dentro del rango, abre la puerta
+  }
+  else
+  {
+    if (debugPuerta) Serial.println("Regulacion de puerta OFF");              // Desactiva la funcion
+    servo.write(2);                                                           // Cierra la puerta
   }
 }
+
+// Funcion que lee el valor para el angulo de la puerta
+
+boolean lecturaValorAngulo()
+{
+  delay(10);                                                                   // Para que realice bien la lectura del Serial.parseInt()
+
+  if (Serial1.available() > 0)                                                 // Si hay datos
+  {
+    lecturaAngulo = Serial1.parseInt();                                        // Leo Entero del Serial
+
+    if (debug) Serial.print("Valor leido led Slider: ");                       // Imprimo dato
+    if (debug) Serial.println(lecturaAngulo);                                  // Imprimo dato
+
+    if ((lecturaAngulo < 1) || (lecturaAngulo > 179))                          // Si valor erroneo debe estar entre (1-179)
+    {
+      if (debug) Serial.print("Valor incorrecto (1-179): ");                   // Imprimo dato
+      if (debug) Serial.println(lecturaAngulo);                                // Imprimo dato
+
+      return false;                                                            // Devuelvo false - error en comando
+    }
+    else return true;                                                          // Si valor correcto - Devuelvo true - Comando OK completo
+  }
+  else                                                                         // Si no hay datos
+  {
+    if (debug) Serial.println("Comando incompleto - S + numero (1-179)");      // Imprimo dato
+
+    return false;                                                              // Devuelvo false - comando incompleto
+  }
+
+}
+
+
+//Funciones que regulan la alarma
+
 
 void modoAlarmaAuto (boolean modoAlarma)
 {
@@ -498,12 +559,12 @@ void modoAlarmaAuto (boolean modoAlarma)
 
 void controlLedLuz()
 {
-  int lecturaValorLDR = analogRead(pinLDR);                       // Leo el valor de la LDR.
-  int valorLed = map(lecturaValorLDR, minLDR, maxLDR, 255, 0);    // Lo mapeo a un valor entre 0 y 255.
-  analogWrite(pinLedLuz, valorLed);                               // Enciendo el pinLedLuz con el valor leido.
-  if (debugValLDR) Serial.print("Valor LDR: ");                   // Imprimo dato.
-  if (debugValLDR) Serial.print(lecturaValorLDR);                 // Lee el valor del LDR
-  if (debugValLDR) Serial.print("\t Valor Led: ");                // Imprimo dato.
+  int lecturaValorLDR = analogRead(pinLDR);                                      // Leo el valor de la LDR.
+  int valorLed = map(lecturaValorLDR, minLDR, maxLDR, 255, 0);                   // Lo mapeo a un valor entre 0 y 255.
+  analogWrite(pinLedLuz, valorLed);                                              // Enciendo el pinLedLuz con el valor leido.
+  if (debugValLDR) Serial.print("Valor LDR: ");                                  // Imprimo dato.
+  if (debugValLDR) Serial.print(lecturaValorLDR);                                // Lee el valor del LDR
+  if (debugValLDR) Serial.print("\t Valor Led: ");                               // Imprimo dato.
   if (debugValLDR) Serial.println(valorLed);
   delay(500);
 }
@@ -514,40 +575,69 @@ void controlLedLuz()
 void controlVent()
 
 {
-  float tempC = dht.readTemperature();                        // Variable para leer la temperatura en ºC
-  float tempFar = dht.readTemperature();                      // Variable para leer la temperatura en ºF (Solo para puerto Serial)
+  tempC = dht.readTemperature();                                                  //Variable para leer la temperatura en ºC
+  tempFar = dht.readTemperature();                                                //Variable para leer la temperatura en ºF (Solo para puerto Serial)
 
-  if (isnan(tempC) || isnan(tempFar)) {                       // Funcion para notificar fallo en el sensor
-    Serial.println("No se detecta el sensor!");
+  if (isnan(tempC) || isnan(tempFar)) {                                           //Funcion para notificar fallo en el sensor
+    Serial.println("No se deteretardoAlarmaa el sensor!");
     return;
   }
 
   float hi = dht.computeHeatIndex(tempFar, tempC);
   lcd.clear();
-  Serial.print("Temperatura: ");                              // Imprimir la palabra "Temperatura" puerto serial
-  lcd.print("Temperatura (*C): ");                            // Imprimir la palabra "Temperatura" en pantalla LCD
-  lcd.setCursor(3, 1);                                        // Posicion en la pantalla LCD
-  Serial.print(tempC);                                        // Imprimir temperatura ºC en Serial
-  lcd.print(tempC);                                           // Imprimir temperatura ºC en LCD
-  Serial.print(" *C ");                                       // Indicar que son ºC en la pantalla LCDb
+  Serial.print("Temperatura: ");                                                   // imprimir la palabra "Temperatura" puerto serial
+  lcd.print("Temperatura (*C): ");                                                 // imprimir la palabra "Temperatura" en pantalla LCD
+  lcd.setCursor(3, 1);                                                             // Posicion en la pantalla LCD
+  Serial.print(tempC);                                                             // Imprimir temperatura ºC en Serial
+  lcd.print(tempC);                                                                // Imprimir temperatura ºC en LCD
+  Serial.print(" *C ");                                                            // Indicar que son ºC en la pantalla LCDb
   lcd.setCursor(6, 2);
-  Serial.print(tempFar);                                      // Imprimir temperatura ºF en Serial
+  Serial.print(tempFar);//Imprimir temperatura ºC en Serial
   Serial.print(" *F\t");
   Serial.print("Heat index: ");
   Serial.print(hi);
   Serial.println(" *F");
   delay(1000);
 
-  if (tempC >= 20)                                                // Si la temperatura es superior a los 20ºC
+  if (tempC >= temperaturaInicio)                                                   // Si la temperatura es superior a los 20ºC
   {
-    digitalWrite (pinVent, HIGH);                                 // Encender el ventilador
+    digitalWrite (pinVent, HIGH);                                                   // encender el ventilador
   }
   else
   {
-    digitalWrite(pinVent, LOW);                                   // Apagar el ventilador
+    digitalWrite(pinVent, LOW);                                                     // Apagar el ventilador
   }
 }
+// Control de la temperatura
 
+boolean modoTermostato()
+{
+  delay(10);                                                                        // Para que realice bien la lectura del Serial.parseInt()
+
+  if (Serial1.available() > 0)                                                      // Si hay datos
+  {
+    temperaturaInicio = Serial1.parseInt();                                         // Leo Entero del Serial
+
+    if (debug) Serial.print("Valor leido de temperatura: ");                        // Imprimo dato
+    if (debug) Serial.println(temperaturaInicio);                                   // Imprimo dato
+
+    if ((temperaturaInicio < 15) || (temperaturaInicio > 50))                       // Si valor erroneo debe estar entre (15*C- 50*C)
+    {
+      if (debug) Serial.print("Valor incorrecto (15*C- 50*C): ");                   // Imprimo dato
+      if (debug) Serial.println(temperaturaInicio);                                 // Imprimo dato
+
+      return false;                                                                 // Devuelvo false - error en comando
+    }
+    else return true;                                                               // Si valor correcto - Devuelvo true - Comando OK completo
+  }
+  else                                                                              // Si no hay datos
+  {
+    if (debug) Serial.println("Comando incompleto - S + numero (15*C- 50*C)");      // Imprimo dato
+
+    return false;                                                                   // Devuelvo false - comando incompleto
+  }
+
+}
 
 //Control del enchufe - Rele -
 
