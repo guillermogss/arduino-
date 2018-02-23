@@ -45,6 +45,16 @@ const byte pinRelay = 23;                       // Pin Rele ap.4
 //Slider
 const byte pinLedSlider = 3;                    // Pin Led ap.3
 
+//Led RGB
+
+const byte pinRGBRojo = 5;                      //Pin para RGB Rojo ap. 4
+const byte pinRGBVerde = 6;                     //Pin para RGB Verde ap. 4
+const byte pinRGBAzul = 7;                      //Pin para RGB Azul ap. 4
+
+// Persianas
+byte persianaUp = 36;                           // Pin de subida de persiana por pulsador ap. 6
+byte persianaDown = 37;                         // Pin de bajada de persiana por pulsadorap. 6
+
 //Alarma
 int pinAviso = 34;                              // Pin led de aviso alarma ap.8
 int pinSirena = 35;                             // Pin que activa ña sirena ap. 8
@@ -61,7 +71,8 @@ boolean ledLuzAuto = false;                     // PinLed modo funcionamiento fa
 boolean ventAuto = false;                       // Pin para el ventilador - false: manual - true: automatico -> inicalmente manual
 boolean relayAuto = false;                      // Pin para el enchufe - false: manual - true: automatico -> inicalmente manual y posicion cerrada
 boolean puertaAuto = false;                     // Pin para la puerta - false: cerrado
-boolean sirenaAuto = false;                     // Pin para la sirena -
+boolean sirenaAuto = false;                     // Pin para la sirena - false: alarma desactivada
+
 
 // Variables de las librerias
 
@@ -91,17 +102,19 @@ float tempFar;                                  // Variable para leer la tempera
 
 /********************************* Variable para imprimir valores - Debug *************************************************************/
 
-boolean debug = true;                           // Activamos o desactivos el debug
-boolean debugLedLuz = true;                     // Activamos o desactivamos debug de los LEDS
-boolean debugModoLedLuz = true;                 // Activamos o desactivamos el debug del led: Manual/Automatico.
-boolean debugValLDR = true;                     // Activamos o desactivamos el debug de los Valores la LDR.
-boolean debugCalibraLDR = true;                 // Activamos o desactivamos el debug de la calibracion LDR.
-boolean debugVent = true;                       // Activamos o desactivamos el debug del Ventilador: Manual/Automatico
-boolean debugTemp = false;                      // Activamos o desactivamos el debug de la temperatura
-boolean debugRelay = true;                      // Activamos o desactivamos el debug del Rele
-boolean debugPuerta = true;                     // Activamos o desactivamos el debug del Servo
-boolean debugRangoPuerta = true;                // Activamos o desactivamos el debug del control de la apertura de puerta
-boolean debugAlarma = true;                     // Activamos o desactivamos el debug de la alarma
+boolean debug = false;                           // Activamos o desactivos el debug
+boolean debugLedLuz = false;                     // Activamos o desactivamos debug de los LEDS
+boolean debugModoLedLuz = false;                 // Activamos o desactivamos el debug del led: Manual/Automatico.
+boolean debugValLDR = false;                     // Activamos o desactivamos el debug de los Valores la LDR.
+boolean debugCalibraLDR = false;                 // Activamos o desactivamos el debug de la calibracion LDR.
+boolean debugVent = false;                       // Activamos o desactivamos el debug del Ventilador: Manual/Automatico
+boolean debugTemp = false;                       // Activamos o desactivamos el debug de la temperatura
+boolean debugRGB = false;                        // Activamos o desactivamos el debug de los sliders RGB
+boolean debugRelay = false;                      // Activamos o desactivamos el debug del Rele
+boolean debugPersiana = false;                   // Activamos o desacivamos el debug de la persiana
+boolean debugPuerta = false;                     // Activamos o desactivamos el debug del Servo
+boolean debugRangoPuerta = false;                     // Activamos o desactivamos el debug del control de la apertura de puerta
+boolean debugAlarma = false;                     // Activamos o desactivamos el debug de la alarma
 
 /********************************** Variables para la configuracion del LDR*************************************************************/
 
@@ -170,17 +183,33 @@ void configuraPines()
   pinMode(pinRelay, OUTPUT);                        // Se configura el Relay como salida
   digitalWrite (pinRelay, LOW);                     // Se inicia el Rele en OFF
 
+  pinMode(persianaUp, OUTPUT);                      // Se configura el el pin del boton de la persiana como salida
+  digitalWrite(persianaUp, LOW);                    // Se inicia el boton de la persiana en OFF
+
+  pinMode(persianaDown, OUTPUT);                    // Se configura el el pin del boton de la persiana como salida
+  digitalWrite(persianaDown, LOW);                  // Se inicia el boton de la persiana en OFF
+
+
   pinMode(pinLedSlider, OUTPUT);                    // Configuramos pin Luz Slider como salida
   digitalWrite(pinLedSlider, LOW);                  // Iniciamos el Led Luz Slider como apagado
 
-  servo.attach(10);                                 // Definimos el pin del Servo
-  servo.write(10);  //ready
+  pinMode (pinRGBRojo, OUTPUT);                     // Configuramos RGB rojo Luz Slider como salida
+  digitalWrite(pinRGBRojo, LOW);                    // Iniciamos el RGB rojo como apagado
+
+  pinMode (pinRGBVerde, OUTPUT);                    // Configuramos RGB verde Luz Slider como salida
+  digitalWrite(pinRGBVerde, LOW);                   // Iniciamos el RGB verde como apagado
+
+  pinMode (pinRGBAzul, OUTPUT);                     // Configuramos RGB azul Luz Slider como salida
+  digitalWrite(pinRGBAzul, LOW);                    // Iniciamos el RGB azul como apagado
+
+  servo.attach(13);                                 // Definimos el pin del Servo
+  servo.write(13);  //ready
   delay(950);
 
   pinMode(pinAviso, OUTPUT);                        // Configuramos el pin de salida para el led de aviso
   pinMode(pinSirena, OUTPUT);                       // Configuramos el pin de salida para la sirena
-  digitalWrite(pinAviso, LOW);
-  digitalWrite(pinSirena, LOW);
+  digitalWrite(pinAviso, LOW);                      // Lo iniciamos en apagado
+  digitalWrite(pinSirena, LOW);                     // Lo iniciamos en apagado
 }
 
 /*Funcion calibrado LDR*/
@@ -272,26 +301,41 @@ void actuaciones()
   else if (lecturaComando == 'e') modoRelayAuto(false);                     // Si 'e' Activacion para uso infrarojo
   else if (lecturaComando == 'E') modoRelayAuto(true);                      // Si 'E' Desactivacion para infrarojo
 
+  /*Persianas*/
+  else if (lecturaComando == 'U') abrePersiana();                           // Si 'U' Subir persiana
+  else if (lecturaComando == 'R') cierraPersiana();                         // Si 'D' Bajar persiana
+  else if (lecturaComando == 'Z') paraPersiana();                           // Si 'Z' Parada de persiana
+
 
   /* Encendido por Slider*/
   else if (lecturaComando == 'D') accionLedSlider(true);                    // Si 'D' Leemos el valor del Slider
   else if (lecturaComando == 'd') accionLedSlider(false);                   // Si 'd' apagamos Led Slider
 
+
+  /* Encendido del RGB*/
+  else if (lecturaComando == 'M') accionRGBSliderRojo(true);                    // Si 'M' Leemos el valor del RGB rojo
+  else if (lecturaComando == 'm') accionRGBSliderRojo(false);                   // Si 'd' apagamos Led RGB rojo
+  else if (lecturaComando == 'Y') accionRGBSliderVerde(true);                   // Si 'M' Leemos el valor del RGB verde
+  else if (lecturaComando == 'y') accionRGBSliderVerde(false);                  // Si 'd' apagamos Led RGB verde
+  else if (lecturaComando == 'C') accionRGBSliderAzul(true);                    // Si 'M' Leemos el valor del RGB azul
+  else if (lecturaComando == 'c') accionRGBSliderAzul(false);                   // Si 'd' apagamos Led RGB azul
+
+
   /* Apertura de puerta*/
-  else if ((lecturaComando == 'P') && (!puertaAuto)) puertaOpen();          // Si 'r' y manual: Activo enchufe
-  else if ((lecturaComando == 'p') && (!puertaAuto)) puertaClose();         // Si 'R' y manual: Desctivo enchufe
-  else if (lecturaComando == 'G') accionServoSlider(true);                    // Si 'G' Leemos el angulo de apertura de la puerta
-  else if (lecturaComando == 'g') accionServoSlider(false);                   // Si 'g' apagamos se desactiva la regulacion de la apertura de la puerta
+  else if ((lecturaComando == 'P') && (!puertaAuto)) puertaOpen();              // Si 'r' y manual: Activo enchufe
+  else if ((lecturaComando == 'p') && (!puertaAuto)) puertaClose();             // Si 'R' y manual: Desctivo enchufe
+  else if (lecturaComando == 'G') accionServoSlider(true);                      // Si 'G' Leemos el angulo de apertura de la puerta
+  else if (lecturaComando == 'g') accionServoSlider(false);                     // Si 'g' apagamos se desactiva la regulacion de la apertura de la puerta
 
   /*Alarma*/
-  else if (lecturaComando == 's') modoAlarmaAuto(false);                    // Si 'S' -  Sistema Armado
-  else if (lecturaComando == 'S') modoAlarmaAuto(true);                     // Si 's' - Sistema desarmado
+  else if (lecturaComando == 's') modoAlarmaAuto(false);                        // Si 'S' -  Sistema Armado
+  else if (lecturaComando == 'S') modoAlarmaAuto(true);                         // Si 's' - Sistema desarmado
 
 
 
   // Añadir nuevos comandos y llamadas a nuevas funciones
 
-  else if (debug) Serial.println("Comando incorrecto");                     // Si no coincide con ningun comando de actuacion, muestra el mensaje en serial
+  else if (debug) Serial.println("Comando incorrecto");                         // Si no coincide con ningun comando de actuacion, muestra el mensaje en serial
   vaciaSerial();
 
 }
@@ -401,14 +445,14 @@ void modoRelayAuto(boolean modoRelay)
 
 void accionLedSlider(boolean actuar)
 {
-  if (actuar)                                                                  // Si recibimos orden de encender
+  if (actuar)                                                                     // Si recibimos orden de encender
   {
-    if (lecturaValorLedSlider()) analogWrite(pinLedSlider, lecturaValor);      // Si la letura del valor es correcta regula el led
+    if (lecturaValorLedSlider()) analogWrite(pinLedSlider, lecturaValor);         // Si la letura del valor es correcta regula el led
   }
   else
   {
     if (debug) Serial.println("Led Slider -> OFF ");
-    digitalWrite(pinLedSlider, LOW);                                           // Si recibimos orden de apagar-> Apagamos
+    digitalWrite(pinLedSlider, LOW);                                              // Si recibimos orden de apagar-> Apagamos
   }
 }
 
@@ -443,13 +487,175 @@ boolean lecturaValorLedSlider()
 
 }
 
+// Funciones que regula RGB Rojo
+
+void accionRGBSliderRojo(boolean actuar)
+{
+  if (actuar)                                                                  // Si recibimos orden de encender
+  {
+    if (lecturaRGBRojo()) analogWrite(pinRGBRojo, lecturaValor);               // Si la letura del valor es correcta regula el led
+  }
+  else
+  {
+    if (debug) Serial.println("RGB Rojo -> OFF ");
+    digitalWrite(pinRGBRojo, LOW);                                              // Si recibimos orden de apagar-> Apagamos
+  }
+}
+
+// Funcion que lee el valor para el RGB rojo
+
+boolean lecturaRGBRojo()
+{
+  delay(10);                                                                   // Para que realice bien la lectura del Serial.parseInt()
+
+  if (Serial1.available() > 0)                                                 // Si hay datos
+  {
+    lecturaValor = Serial1.parseInt();                                         // Leo Entero del Serial
+
+    if (debug) Serial.print("Valor leido RGB Rojo: ");                         // Imprimo dato
+    if (debug) Serial.println(lecturaValor);                                   // Imprimo dato
+
+    if ((lecturaValor < 0) || (lecturaValor > 255))                            // Si valor erroneo debe estar entre (1-255)
+    {
+      if (debug) Serial.print("Valor incorrecto (1-255): ");                   // Imprimo dato
+      if (debug) Serial.println(lecturaValor);                                 // Imprimo dato
+
+      return false;                                                            // Devuelvo false - error en comando
+    }
+    else return true;                                                          // Si valor correcto - Devuelvo true - Comando OK completo
+  }
+  else                                                                         // Si no hay datos
+  {
+    if (debug) Serial.println("Comando incompleto - S + numero (1-255)");      // Imprimo dato
+
+    return false;                                                              // Devuelvo false - comando incompleto
+  }
+
+}
+
+// Funciones que regula RGB Verde
+
+void accionRGBSliderVerde(boolean actuar)
+{
+  if (actuar)                                                                  // Si recibimos orden de encender
+  {
+    if (lecturaRGBVerde()) analogWrite(pinRGBVerde, lecturaValor);             // Si la letura del valor es correcta regula el led
+  }
+  else
+  {
+    if (debug) Serial.println("RGB Verde -> OFF ");
+    digitalWrite(pinRGBVerde, LOW);                                           // Si recibimos orden de apagar-> Apagamos
+  }
+}
+
+// Funcion que lee el valor para el RGB Verde
+
+boolean lecturaRGBVerde()
+{
+  delay(10);                                                                   // Para que realice bien la lectura del Serial.parseInt()
+
+  if (Serial1.available() > 0)                                                 // Si hay datos
+  {
+    lecturaValor = Serial1.parseInt();                                         // Leo Entero del Serial
+
+    if (debug) Serial.print("Valor leido RGB Verde: ");                        // Imprimo dato
+    if (debug) Serial.println(lecturaValor);                                   // Imprimo dato
+
+    if ((lecturaValor < 0) || (lecturaValor > 255))                            // Si valor erroneo debe estar entre (1-255)
+    {
+      if (debug) Serial.print("Valor incorrecto (1-255): ");                   // Imprimo dato
+      if (debug) Serial.println(lecturaValor);                                 // Imprimo dato
+
+      return false;                                                            // Devuelvo false - error en comando
+    }
+    else return true;                                                          // Si valor correcto - Devuelvo true - Comando OK completo
+  }
+  else                                                                         // Si no hay datos
+  {
+    if (debug) Serial.println("Comando incompleto - S + numero (1-255)");      // Imprimo dato
+
+    return false;                                                              // Devuelvo false - comando incompleto
+  }
+
+}
+
+
+// Funciones que regula RGB azul
+
+void accionRGBSliderAzul(boolean actuar)
+{
+  if (actuar)                                                                  // Si recibimos orden de encender
+  {
+    if (lecturaRGBAzul()) analogWrite(pinRGBAzul, lecturaValor);      // Si la letura del valor es correcta regula el led
+  }
+  else
+  {
+    if (debug) Serial.println("Led Slider -> OFF ");
+    digitalWrite(pinRGBAzul, LOW);                                           // Si recibimos orden de apagar-> Apagamos
+  }
+}
+
+// Funcion que lee el valor para el RGB azul
+
+boolean lecturaRGBAzul()
+{
+  delay(10);                                                                   // Para que realice bien la lectura del Serial.parseInt()
+
+  if (Serial1.available() > 0)                                                 // Si hay datos
+  {
+    lecturaValor = Serial1.parseInt();                                         // Leo Entero del Serial
+
+    if (debug) Serial.print("Valor leido RGB azul: ");                         // Imprimo dato
+    if (debug) Serial.println(lecturaValor);                                   // Imprimo dato
+
+    if ((lecturaValor < 0) || (lecturaValor > 255))                            // Si valor erroneo debe estar entre (1-255)
+    {
+      if (debug) Serial.print("Valor incorrecto (1-255): ");                   // Imprimo dato
+      if (debug) Serial.println(lecturaValor);                                 // Imprimo dato
+
+      return false;                                                            // Devuelvo false - error en comando
+    }
+    else return true;                                                          // Si valor correcto - Devuelvo true - Comando OK completo
+  }
+  else                                                                         // Si no hay datos
+  {
+    if (debug) Serial.println("Comando incompleto - S + numero (1-255)");      // Imprimo dato
+
+    return false;                                                              // Devuelvo false - comando incompleto
+  }
+
+}
+
+
+// Funcion que regula el accionamiento de las persianas
+
+void abrePersiana()                                                                    // Funcion abrir persiana
+{
+digitalWrite(persianaUp, HIGH);                                                        // activamos apertura de persiana
+digitalWrite(persianaDown, LOW);                                                       // mantener esa funcion desactivada mientra abre persiana
+if (debugPersiana) Serial.println("Subiendo persiana");                                // Imprimo dato
+}
+
+void cierraPersiana()                                                                  // Funcion cerrar persiana
+{
+digitalWrite(persianaDown, HIGH);                                                      // activamos cierre de persiana
+digitalWrite(persianaUp, LOW);                                                         // Mantener la funcion de abrir persiana mientras este cerrando
+}
+
+void paraPersiana()                                                                   // Funcion parar persiana
+{
+digitalWrite(persianaUp, LOW);                                                        // Desactivamos apertura de persiana
+digitalWrite(persianaDown, LOW);                                                      // Desactivamos cierre de persiana
+}
+
+
 // Funcion que lee el accionamiento de la puerta
 
 void puertaOpen()
 {
   if (debugPuerta) Serial.println ("Puerta abierta ");
   {
-    servo.write(175);                                                           // Abre la puerta a 175º
+    servo.write(175);                                                                  // Abre la puerta a 175º
   }
 }
 void puertaClose()
@@ -457,7 +663,7 @@ void puertaClose()
 
   if (debugPuerta) Serial.println ("Puerta cerrada ");
   {
-    servo.write(2);                                                             // Cierro la puerta
+    servo.write(2);                                                                     // Cierro la puerta
   }
 }
 
@@ -469,7 +675,7 @@ void accionServoSlider(boolean actuar)
 {
   if (actuar)                                                                  // SI se ejecuta el comando
   {
-    if (lecturaValorAngulo())servo.write(lecturaAngulo);                       // si la lectura esta dentro del rango, abre la puerta
+    if (lecturaValorAngulo())servo.write(lecturaAngulo);                      // si la lectura esta dentro del rango, abre la puerta
   }
   else
   {
@@ -486,15 +692,15 @@ boolean lecturaValorAngulo()
 
   if (Serial1.available() > 0)                                                 // Si hay datos
   {
-    lecturaAngulo = Serial1.parseInt();                                        // Leo Entero del Serial
+    lecturaAngulo = Serial1.parseInt();                                         // Leo Entero del Serial
 
     if (debug) Serial.print("Valor leido led Slider: ");                       // Imprimo dato
-    if (debug) Serial.println(lecturaAngulo);                                  // Imprimo dato
+    if (debug) Serial.println(lecturaAngulo);                                   // Imprimo dato
 
-    if ((lecturaAngulo < 1) || (lecturaAngulo > 179))                          // Si valor erroneo debe estar entre (1-179)
+    if ((lecturaAngulo < 1) || (lecturaAngulo > 179))                            // Si valor erroneo debe estar entre (1-179)
     {
       if (debug) Serial.print("Valor incorrecto (1-179): ");                   // Imprimo dato
-      if (debug) Serial.println(lecturaAngulo);                                // Imprimo dato
+      if (debug) Serial.println(lecturaAngulo);                                 // Imprimo dato
 
       return false;                                                            // Devuelvo false - error en comando
     }
