@@ -3,10 +3,7 @@
                                               LIBRERIAS
 ***********************************************************************************************/
 //Librería para el receptor IR
-#include <boarddefs.h>
 #include <IRremote.h>
-#include <IRremoteInt.h>
-#include <ir_Lego_PF_BitStreamEncoder.h>
 
 #include <Wire.h>
 
